@@ -1,0 +1,21 @@
+name: validate
+on: [push, pull_request]
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: service-status.json matches the app's schema
+        run: |
+          python3 - <<'PY'
+          import json, re
+          d = json.load(open("service-status.json"))
+          assert set(d) == {"state", "closesOn"}, f"unexpected keys: {sorted(d)}"
+          assert d["state"] in ("normal", "closing", "closed"), f"bad state: {d['state']!r}"
+          c = d["closesOn"]
+          if d["state"] == "normal":
+              assert c is None, "closesOn must be null when state is normal"
+          else:
+              assert isinstance(c, str) and re.fullmatch(r"\d{4}-\d{2}-\d{2}", c), "closesOn must be YYYY-MM-DD"
+          print("ok:", d)
+          PY
